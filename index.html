@@ -1,68 +1,102 @@
-<!DOCTYPE html>
-<html lang="pt-BR">
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Sistema Inteligente JB</title>
-  <link rel="stylesheet" href="style.css" />
-</head>
-<body>
-  <main class="app">
-    <section class="hero">
-      <div>
-        <p class="tag">Análise Estatística</p>
-        <h1>Sistema Inteligente JB</h1>
-        <p class="subtitle">Rio / PT-Rio e Look Goiás com histórico, frequência, atrasos e ranking probabilístico.</p>
-      </div>
-      <div class="status-card">
-        <span>Última atualização</span>
-        <strong id="lastUpdate">--</strong>
-      </div>
-    </section>
+const { onSchedule } = require('firebase-functions/v2/scheduler');
+const { onRequest } = require('firebase-functions/v2/https');
+const admin = require('firebase-admin');
+const axios = require('axios');
+const cheerio = require('cheerio');
 
-    <section class="tabs">
-      <button class="tab active" data-lottery="look">Look Goiás</button>
-      <button class="tab" data-lottery="rio">Rio / PT-Rio</button>
-    </section>
+admin.initializeApp();
+const db = admin.firestore();
 
-    <section class="grid">
-      <div class="panel input-panel">
-        <h2>Adicionar resultado</h2>
-        <div class="form-grid">
-          <label>Data <input id="date" type="date" /></label>
-          <label>Horário <input id="time" placeholder="Ex: 14h" /></label>
-          <label>Prêmio <input id="position" type="number" min="1" max="10" value="1" /></label>
-          <label>Milhar <input id="milhar" maxlength="4" placeholder="Ex: 4579" /></label>
-        </div>
-        <button id="addResult" class="primary">Salvar resultado</button>
-        <button id="loadSample" class="secondary">Carregar exemplo</button>
-        <button id="clearData" class="danger">Limpar histórico desta loteria</button>
-        <p class="hint">Cole os resultados manualmente por enquanto. Depois ligamos no coletor automático/Firebase.</p>
-      </div>
+const BICHOS = {1:'Avestruz',2:'Águia',3:'Burro',4:'Borboleta',5:'Cachorro',6:'Cabra',7:'Carneiro',8:'Camelo',9:'Cobra',10:'Coelho',11:'Cavalo',12:'Elefante',13:'Galo',14:'Gato',15:'Jacaré',16:'Leão',17:'Macaco',18:'Porco',19:'Pavão',20:'Peru',21:'Touro',22:'Tigre',23:'Urso',24:'Veado',25:'Vaca'};
+const SOURCES = [
+  { loteria:'rio', nome:'Rio / PT-Rio', url:'https://www.resultadofacil.com.br/resultados-pt-rio-de-hoje-1ao10', fonteNome:'Resultado Fácil' },
+  { loteria:'look', nome:'Look Goiás', url:'https://www.resultadofacil.com.br/resultados-look-loterias-de-hoje-1ao10', fonteNome:'Resultado Fácil' },
+  { loteria:'nacional', nome:'Nacional', url:'https://www.resultadofacil.com.br/resultados-loteria-nacional-de-hoje-1ao10', fonteNome:'Resultado Fácil' }
+];
 
-      <div class="panel score-panel">
-        <h2>Ranking da próxima extração</h2>
-        <div id="ranking" class="ranking empty">Adicione resultados para gerar análise.</div>
-      </div>
-    </section>
+exports.coletarResultadosAgendado = onSchedule({ schedule:'every 30 minutes', timeZone:'America/Sao_Paulo', region:'us-central1', memory:'512MiB', timeoutSeconds:120 }, async () => {
+  for (const source of SOURCES) await coletarESalvar(source);
+});
 
-    <section class="grid three">
-      <div class="panel"><h3>Grupos mais fortes</h3><div id="topGroups"></div></div>
-      <div class="panel"><h3>Dezenas mais fortes</h3><div id="topDezenas"></div></div>
-      <div class="panel"><h3>Bichos atrasados</h3><div id="lateGroups"></div></div>
-    </section>
+// URL para testar no navegador após deploy: /coletarAgora
+exports.coletarAgora = onRequest({ region:'us-central1', memory:'512MiB', timeoutSeconds:120 }, async (req, res) => {
+  const out = [];
+  for (const source of SOURCES) out.push(await coletarESalvar(source));
+  res.json({ ok:true, resultados: out });
+});
 
-    <section class="panel">
-      <h2>Histórico salvo</h2>
-      <div class="table-wrap">
-        <table>
-          <thead><tr><th>Data</th><th>Horário</th><th>Prêmio</th><th>Milhar</th><th>Dezena</th><th>Grupo</th><th>Bicho</th></tr></thead>
-          <tbody id="history"></tbody>
-        </table>
-      </div>
-    </section>
-  </main>
-  <script src="analise.js"></script>
-  <script src="app.js"></script>
-</body>
-</html>
+async function coletarESalvar(source){
+  const { data: html } = await axios.get(source.url, { timeout: 25000, headers: { 'User-Agent':'Mozilla/5.0 SistemaJB/1.0' }});
+  const resultados = parseResultadoFacil(html, source);
+  let salvos = 0;
+  for (const r of resultados) {
+    const id = `${r.loteria}_${r.data}_${slug(r.horario)}`;
+    await db.collection('resultados').doc(id).set(r, { merge:true });
+    for (const p of r.premios) {
+      const pid = `${id}_${p.posicao}`;
+      await db.collection('premios').doc(pid).set({ ...p, loteria:r.loteria, nome:r.nome, data:r.data, horario:r.horario, timestamp:r.timestamp, fonteNome:r.fonteNome, resultadoId:id }, { merge:true });
+    }
+    salvos++;
+  }
+  return { loteria: source.loteria, encontrados: resultados.length, salvos };
+}
+
+function parseResultadoFacil(html, source){
+  const $ = cheerio.load(html);
+  const bodyText = $('body').text().replace(/\s+/g,' ').trim();
+  const h3s = $('h2,h3').toArray();
+  const blocos = [];
+  for (const h of h3s) {
+    const titulo = $(h).text().replace(/\s+/g,' ').trim();
+    if (!/Resultado do dia|Resultado|LOOK|PT-RIO|Nacional|LN/i.test(titulo)) continue;
+    let texto = titulo + ' ';
+    let el = $(h).next();
+    let guard = 0;
+    while (el.length && guard < 18) {
+      if (/^h2|h3$/i.test(el[0].tagName || '')) break;
+      texto += ' ' + el.text().replace(/\s+/g,' ').trim();
+      el = el.next(); guard++;
+    }
+    const premios = extrairPremios(texto).slice(0,10);
+    if (premios.length >= 5) blocos.push(montarResultado(source, titulo + ' ' + texto, premios));
+  }
+  if (blocos.length) return dedupeResultados(blocos);
+  const premios = extrairPremios(bodyText).slice(0,10);
+  return premios.length >= 5 ? [montarResultado(source, bodyText, premios)] : [];
+}
+
+function extrairPremios(texto){
+  const premios = [];
+  const re = /(\d{1,2})º\s+(\d{3,4})\s+(\d{1,2})(?:\s+([A-Za-zÀ-ÿ]+))?/g;
+  let m;
+  while ((m = re.exec(texto)) !== null) {
+    const posicao = Number(m[1]);
+    if (posicao < 1 || posicao > 10) continue;
+    const milhar = String(m[2]).padStart(4,'0');
+    const dezena = milhar.slice(-2);
+    const grupo = Number(m[3]) || grupoDaDezena(dezena);
+    premios.push({ posicao, milhar, centena:milhar.slice(-3), dezena, grupo, bicho: BICHOS[grupo] || m[4] || '' });
+  }
+  // remove duplicados por posição, mantendo o primeiro no bloco
+  const seen = new Set();
+  return premios.filter(p=>{ if(seen.has(p.posicao)) return false; seen.add(p.posicao); return true; });
+}
+
+function montarResultado(source, texto, premios){
+  const data = extrairData(texto) || hojeSP();
+  const horario = extrairHorario(texto) || 'último';
+  return { loteria:source.loteria, nome:source.nome, data, horario, premios, fonteNome:source.fonteNome, fonteUrl:source.url, coletadoEm:new Date().toISOString(), timestamp: Date.now() };
+}
+function extrairData(texto){
+  const iso = texto.match(/(20\d{2})-(\d{2})-(\d{2})/); if(iso) return `${iso[1]}-${iso[2]}-${iso[3]}`;
+  const br = texto.match(/(\d{2})\/(\d{2})\/(20\d{2})/); if(br) return `${br[3]}-${br[2]}-${br[1]}`;
+  return null;
+}
+function extrairHorario(texto){
+  const m = texto.match(/(?:das|,|\s)(\d{1,2})(?::(\d{2}))?\s*h?/i);
+  if(!m) return null; return `${String(m[1]).padStart(2,'0')}:${m[2] || '00'}`;
+}
+function grupoDaDezena(dezena){ const n=Number(dezena); return n===0?25:Math.ceil(n/4); }
+function hojeSP(){ return new Intl.DateTimeFormat('en-CA',{ timeZone:'America/Sao_Paulo', year:'numeric', month:'2-digit', day:'2-digit' }).format(new Date()); }
+function slug(v){ return String(v).replace(/[^a-z0-9]/gi,'-').toLowerCase(); }
+function dedupeResultados(items){ const map = new Map(); items.forEach(i=>map.set(`${i.data}_${i.horario}`, i)); return [...map.values()].sort((a,b)=>String(b.horario).localeCompare(String(a.horario))); }
