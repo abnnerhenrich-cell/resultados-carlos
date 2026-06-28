@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Sistema Inteligente JB</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <main class="app">
+    <section class="hero">
+      <div>
+        <p class="tag">Análise Estatística</p>
+        <h1>Sistema Inteligente JB</h1>
+        <p class="subtitle">Rio / PT-Rio e Look Goiás com histórico, frequência, atrasos e ranking probabilístico.</p>
+      </div>
+      <div class="status-card">
+        <span>Última atualização</span>
+        <strong id="lastUpdate">--</strong>
+      </div>
+    </section>
+
+    <section class="tabs">
+      <button class="tab active" data-lottery="look">Look Goiás</button>
+      <button class="tab" data-lottery="rio">Rio / PT-Rio</button>
+    </section>
+
+    <section class="grid">
+      <div class="panel input-panel">
+        <h2>Adicionar resultado</h2>
+        <div class="form-grid">
+          <label>Data <input id="date" type="date" /></label>
+          <label>Horário <input id="time" placeholder="Ex: 14h" /></label>
+          <label>Prêmio <input id="position" type="number" min="1" max="10" value="1" /></label>
+          <label>Milhar <input id="milhar" maxlength="4" placeholder="Ex: 4579" /></label>
+        </div>
+        <button id="addResult" class="primary">Salvar resultado</button>
+        <button id="loadSample" class="secondary">Carregar exemplo</button>
+        <button id="clearData" class="danger">Limpar histórico desta loteria</button>
+        <p class="hint">Cole os resultados manualmente por enquanto. Depois ligamos no coletor automático/Firebase.</p>
+      </div>
+
+      <div class="panel score-panel">
+        <h2>Ranking da próxima extração</h2>
+        <div id="ranking" class="ranking empty">Adicione resultados para gerar análise.</div>
+      </div>
+    </section>
+
+    <section class="grid three">
+      <div class="panel"><h3>Grupos mais fortes</h3><div id="topGroups"></div></div>
+      <div class="panel"><h3>Dezenas mais fortes</h3><div id="topDezenas"></div></div>
+      <div class="panel"><h3>Bichos atrasados</h3><div id="lateGroups"></div></div>
+    </section>
+
+    <section class="panel">
+      <h2>Histórico salvo</h2>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Data</th><th>Horário</th><th>Prêmio</th><th>Milhar</th><th>Dezena</th><th>Grupo</th><th>Bicho</th></tr></thead>
+          <tbody id="history"></tbody>
+        </table>
+      </div>
+    </section>
+  </main>
+  <script src="analise.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
