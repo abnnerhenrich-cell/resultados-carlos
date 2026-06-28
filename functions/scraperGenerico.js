@@ -1,0 +1,8 @@
+const axios=require('axios');const cheerio=require('cheerio');const{normalizarPremio}=require('./bichos');
+async function baixar(url){const r=await axios.get(url,{timeout:15000,headers:{'User-Agent':'Mozilla/5.0 JB-Analise/1.0'}});return r.data}
+function limpar(t){return String(t||'').replace(/\s+/g,' ').trim()}
+function extrairData(texto){const m=texto.match(/(\d{1,2})\/(\d{1,2})\/(\d{4})/);if(!m)return new Date().toISOString().slice(0,10);return `${m[3]}-${m[2].padStart(2,'0')}-${m[1].padStart(2,'0')}`}
+function extrairHorario(titulo){const m=titulo.match(/(\d{1,2})h(?:(\d{2}))?/i);return m?`${m[1].padStart(2,'0')}h${m[2]||''}`:'Atual'}
+function parse(html,loteria,nome,fonte){const $=cheerio.load(html);const texto=limpar($('body').text());const blocos=[];$('h1,h2,h3,h4,article,section,div').each((_,el)=>{const t=limpar($(el).text());if(/1º|1°/.test(t)&&/2º|2°/.test(t)&&/3º|3°/.test(t)&&/4º|4°/.test(t)&&/5º|5°/.test(t))blocos.push(t)});const alvo=blocos.sort((a,b)=>a.length-b.length)[0]||texto;const premios=[];const re=/(1|2|3|4|5)[º°]\s*([0-9]{4,5})\s*([A-Za-zÀ-úçÇãõâêôéíóúÁÉÍÓÚ ]{3,25})?\s*\(?([0-9]{1,2})?\)?/g;let m;while((m=re.exec(alvo))&&premios.length<5){premios.push(normalizarPremio(m[1],m[2],limpar(m[3]),m[4]))}if(premios.length<5)throw new Error('Não encontrei 1º ao 5º prêmio nesta fonte');return{loteria,nome,data:extrairData(alvo),horario:extrairHorario(alvo),premios,fonte,timestamp:Date.now(),criadoEm:new Date().toISOString()}}
+async function coletarDeFontes(loteria,nome,urls){let erroFinal;for(const url of urls){try{return parse(await baixar(url),loteria,nome,url)}catch(e){erroFinal=e}}throw erroFinal}
+module.exports={coletarDeFontes};

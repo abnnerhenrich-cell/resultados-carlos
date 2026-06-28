@@ -1,0 +1,1 @@
+{"indexes":[{"collectionGroup":"resultados","queryScope":"COLLECTION","fields":[{"fieldPath":"loteria","order":"ASCENDING"},{"fieldPath":"timestamp","order":"DESCENDING"}]}],"fieldOverrides":[]}

@@ -1,0 +1,1 @@
+{"name":"jb-analise-auto","version":"1.0.0","private":true,"scripts":{"deploy":"firebase deploy","deploy:site":"firebase deploy --only hosting","deploy:functions":"firebase deploy --only functions"},"devDependencies":{"firebase-tools":"latest"}}

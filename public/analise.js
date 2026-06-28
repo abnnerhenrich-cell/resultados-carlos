@@ -1,0 +1,6 @@
+import{normalizarPremio,bichoPorGrupo}from'./resultados.js';
+const inc=(map,k)=>map.set(k,(map.get(k)||0)+1);
+const top=(map,n=5)=>[...map.entries()].sort((a,b)=>b[1]-a[1]).slice(0,n).map(([valor,pontos])=>({valor,pontos}));
+export function analisar(resultados=[]){const grupos=new Map(),dezenas=new Map(),milhares=new Map(),ult=new Map();let ordem=0;resultados.forEach(r=>(r.premios||[]).slice(0,5).forEach(p=>{const x=normalizarPremio(p.posicao,p.milhar,p.bicho,p.grupo);inc(grupos,x.grupo);inc(dezenas,x.dezena);inc(milhares,x.milhar);if(!ult.has(x.grupo))ult.set(x.grupo,ordem);ordem++}))
+const gruposFortes=top(grupos,5).map(x=>({...x,bicho:bichoPorGrupo(x.valor)}));const dezenasFortes=top(dezenas,10);const milharesBase=top(milhares,8);const atrasados=[];for(let g=1;g<=25;g++){const key=String(g).padStart(2,'0');atrasados.push({valor:key,bicho:bichoPorGrupo(key),pontos:ult.has(key)?ult.get(key):999})}atrasados.sort((a,b)=>b.pontos-a.pontos);const milharesSugeridas=gerarMilhares(dezenasFortes,gruposFortes,milharesBase);return{gruposFortes,dezenasFortes,atrasados:atrasados.slice(0,5),milharesSugeridas}}
+function gerarMilhares(dezenas,grupos,milhares){const out=[];milhares.forEach(x=>out.push(x.valor));dezenas.forEach((d,i)=>{const prefix=String((Number(d.valor)*37+i*91)%100).padStart(2,'0');out.push(prefix+d.valor)});return[...new Set(out)].slice(0,10)}
