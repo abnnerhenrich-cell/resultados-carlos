@@ -1,34 +1,22 @@
 # JB Análise Automática
 
-Sistema para GitHub + Firebase com painel Rio, Look Goiás e Nacional.
+Projeto pronto para GitHub + Firebase, sem instalar nada no computador.
 
-## O que vem pronto
-- Site em `public/`
-- Firebase Hosting
-- Firestore
-- Cloud Functions agendada a cada 30 minutos
-- Coletor configurável em `functions/fontes.js`
-- Resultado do 1º ao 5º prêmio
-- Análise estatística: grupos fortes, dezenas fortes, atrasados e milhares sugeridas
+## Já configurado
+- Projeto Firebase: `carlos-resutados`
+- App Web Firebase em `public/firebase.js`
+- Painel Rio / Look Goiás / Nacional
+- Leitura do Firestore
+- GitHub Actions para publicar o site
+- GitHub Actions para coletar resultados a cada 30 minutos
 
-## Antes de subir
-1. Edite `.firebaserc` e troque `COLE_AQUI_O_ID_DO_SEU_PROJETO` pelo ID do projeto Firebase.
-2. Edite `public/firebase.js` e cole o `firebaseConfig` do seu app Web.
-3. Envie todos os arquivos para o GitHub.
+## O que você precisa fazer
+1. Enviar todos estes arquivos para um repositório no GitHub.
+2. Criar uma chave de conta de serviço no Firebase/Google Cloud.
+3. Salvar essa chave no GitHub com o nome `FIREBASE_SERVICE_ACCOUNT`.
+4. Rodar as Actions: `Publicar site no Firebase` e `Coletar resultados`.
 
-## Deploy depois no Firebase
-```bash
-npm install -g firebase-tools
-firebase login
-firebase use --add
-firebase deploy
-```
+## Aviso
+O coletor usa fontes públicas configuradas em `functions/fontes.js`. Se algum site mudar o HTML, a URL ou o parser pode precisar de ajuste.
 
-## Teste manual da coleta
-Depois do deploy, abra:
-`https://SEU-SITE.web.app/coletarAgora`
-
-## Fontes
-As fontes ficam em `functions/fontes.js`. Se algum site mudar o HTML, troque a URL ali.
-
-Importante: este sistema gera análise estatística. Não garante resultado futuro.
+Análise estatística não garante acerto futuro.

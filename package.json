@@ -1,1 +1,16 @@
-{"name":"jb-analise-auto","version":"1.0.0","private":true,"scripts":{"deploy":"firebase deploy","deploy:site":"firebase deploy --only hosting","deploy:functions":"firebase deploy --only functions"},"devDependencies":{"firebase-tools":"latest"}}
+{
+  "name": "jb-analise-auto",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "coletar": "node scripts/coletar.js"
+  },
+  "devDependencies": {
+    "firebase-tools": "latest"
+  },
+  "dependencies": {
+    "axios": "^1.7.9",
+    "cheerio": "^1.0.0",
+    "firebase-admin": "^12.7.0"
+  }
+}
