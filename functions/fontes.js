@@ -27,7 +27,7 @@ module.exports = {
 
   nacional: [
     {
-      url: 'https://deunoposte.app.br/loteria-nacional/',
+      url: 'https://deunoposte.app.br/resultado-nacional/,
       include: ['nacional', 'loteria nacional'],
       exclude: ['rio de janeiro', 'pt-rio', 'look', 'goias']
     },
